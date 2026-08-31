@@ -5,8 +5,12 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tmux set-option -g @agent_scripts "$CURRENT_DIR/scripts"
 
 # Focusing a wait/done pane means I've seen it -> downgrade to idle.
-tmux set-hook -g pane-focus-in \
-  'run-shell -b "case $(tmux show-option -qpv @agent_state) in wait|done) tmux set-option -p @agent_state idle;; esac"'
+# Appended (-a) so existing pane-focus-in hooks survive; guarded so
+# re-sourcing never stacks duplicates.
+# shellcheck disable=SC2016  # single-quoted on purpose: the shell runs this when the hook fires
+tmux show-hooks -g pane-focus-in 2>/dev/null | grep -qF 'set-option -p @agent_state idle' \
+  || tmux set-hook -ga pane-focus-in \
+  'run-shell -b "case $(tmux show-option -qpv @agent_state) in wait|done) tmux set-option -p @agent_state idle; tmux set-option -p @agent_state_ts $(date +%s);; esac"'
 
 # Picker key (default M-a). Override: set -g @agent-monitor-key 'M-g'
 key="$(tmux show-option -gqv @agent-monitor-key)"; key="${key:-M-a}"
