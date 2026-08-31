@@ -20,6 +20,11 @@ set -g @plugin 'gugahoi/tmux-agent-monitor'
 ```
 
 `prefix + I` to install. Wires the `Alt+a` picker and the focus-downgrade hook.
+Rebind the picker (set before the plugin loads):
+
+```tmux
+set -g @agent-monitor-key 'M-g'   # default: M-a
+```
 
 **agent side (ad-hoc):**
 

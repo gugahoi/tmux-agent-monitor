@@ -8,5 +8,6 @@ tmux set-option -g @agent_scripts "$CURRENT_DIR/scripts"
 tmux set-hook -g pane-focus-in \
   'run-shell -b "case $(tmux show-option -qpv @agent_state) in wait|done) tmux set-option -p @agent_state idle;; esac"'
 
-# Alt+a: pick an agent instance across all sessions.
-tmux bind-key -n M-a display-popup -w 80% -h 70% -E "$CURRENT_DIR/scripts/tmux-agent-picker.sh"
+# Picker key (default M-a). Override: set -g @agent-monitor-key 'M-g'
+key="$(tmux show-option -gqv @agent-monitor-key)"; key="${key:-M-a}"
+tmux bind-key -n "$key" display-popup -w 80% -h 70% -E "$CURRENT_DIR/scripts/tmux-agent-picker.sh"
