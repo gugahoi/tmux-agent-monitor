@@ -7,15 +7,16 @@ rows() {
   | awk -F'|' '$1!=""' \
   | while IFS='|' read -r agent st sess dir target; do
       case "$st" in
-        wait) b="🔴 waiting" ;; done) b="🟢 done   " ;;
-        busy) b="🟡 busy   " ;; idle) b="⚪ idle   " ;;
-        *)    b="   ${st:-?}" ;;
+        wait) b="🔴 waiting"; r=0 ;; done) b="🟢 done   "; r=1 ;;
+        busy) b="🟡 busy   "; r=2 ;; idle) b="⚪ idle   "; r=3 ;;
+        *)    b="   ${st:-?}"; r=9 ;;
       esac
-      printf '%s\t%-8s\t%s\t%s\t%s\n' "$b" "$agent" "$dir" "$sess" "$target"
+      # leading rank field orders the list (wait first); cut drops it before fzf
+      printf '%s\t%s\t%-8s\t%s\t%s\t%s\n' "$r" "$b" "$agent" "$dir" "$sess" "$target"
     done
 }
 
-sel=$(rows | sort \
+sel=$(rows | sort -t"$(printf '\t')" -k1,1n | cut -f2- \
   | fzf --ansi --with-nth=1,2,3,4 --delimiter='\t' \
         --prompt='🤖 ' --header='status · agent · worktree · session' \
         --preview 'tmux capture-pane -pt "$(printf "%s" {} | cut -f5)" -S -40' \
