@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "$HOME/.claude/tmux-agent-state.sh claude start" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "$HOME/.claude/tmux-agent-state.sh claude prompt" }] }
+    ],
+    "Notification": [
+      { "hooks": [{ "type": "command", "command": "$HOME/.claude/tmux-agent-state.sh claude notify" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "$HOME/.claude/tmux-agent-state.sh claude stop" }] }
+    ],
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "$HOME/.claude/tmux-agent-state.sh claude end" }] }
+    ]
+  }
+}
