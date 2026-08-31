@@ -45,9 +45,17 @@ agents to load their adapter.
 ## Use
 
 - **`Alt+a`** — picker across all sessions, `wait` floats to top, live preview, Enter jumps.
-- **status-right roll-up** (optional, manual): add `#(~/path/to/scripts/tmux-agent-summary.sh)`
-  to your `status-right`. Prints e.g. `🔴2 🟢1`. Left manual so re-sourcing your
-  config doesn't append it repeatedly.
+- **status-right roll-up** — a live count (e.g. `🔴2 🟢1`), refreshed on your
+  `status-interval`. Opt in (off by default so it never touches a bar you compose):
+
+  ```tmux
+  set -g @agent-monitor-status 'on'   # before the plugin loads
+  ```
+
+  It prepends the summary once and is re-source safe (skips if already present).
+  Prefer to place it yourself? Leave the flag off and add
+  `#(~/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-summary.sh)` wherever
+  you want in your own `status-right`.
 
 ## Layout
 
