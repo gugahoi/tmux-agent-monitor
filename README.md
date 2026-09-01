@@ -22,19 +22,7 @@ Every agent gets a traffic light — ⚪ idle · 🟡 busy · 🔴 waiting for y
 🟢 done (unreviewed) — and `Alt+a` opens a picker with the ones that need you
 on top, how long they've been waiting, and a live preview:
 
-```
-🤖 status · age · agent · worktree · session
-╭────────────────────────────────────────────╮
-│ 🔴 waiting   4m  claude    flux/api       │
-│ 🔴 waiting  12s  opencode  flux/web       │
-│ 🟢 done      9m  pi        dotfiles       │
-│ 🟡 busy          claude    sandbox        │
-╰────────────────────────────────────────────╯
-╎ Enter jumps to the session · preview below ╎
-```
-
-<!-- TODO(demo): replace this ASCII mock with a real recording of the picker
-     (e.g. vhs or asciinema + agg), committed as docs/demo.gif and embedded here. -->
+![demo](docs/demo.gif)
 
 No daemon. No database. No background process. Agents stamp their own state
 into tmux pane options through their **native hook systems** — tmux itself is
