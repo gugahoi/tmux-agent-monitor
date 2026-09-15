@@ -80,22 +80,44 @@ skipped. **Restart running agents once** so they pick up the adapter.
 - **Notifications (opt-in)** — run any command when an agent *enters* the
   waiting state (blocked on you) or the done state (finished while you weren't
   watching). Both are edge-triggered (fire once per transition); `done` never
-  fires for a pane you're already focused on. `{agent}` and `{pane}` are
-  substituted:
+  fires for a pane you're already focused on. These placeholders are
+  substituted before the command runs:
+
+  | placeholder   | expands to                                             |
+  |---------------|--------------------------------------------------------|
+  | `{agent}`     | agent name — `claude` · `opencode` · `pi` · …          |
+  | `{pane}`      | tmux pane id (e.g. `%3`)                               |
+  | `{branch}`    | the pane's worktree dir basename (one worktree = one branch) |
+  | `{icon}`      | state emoji — 🔴 waiting · 🟢 done                      |
+  | `{icon_path}` | absolute path to the **state dot** PNG (the traffic light) |
+  | `{agent_icon_path}` | absolute path to the **agent's brand mark** PNG (which agent) |
+  | `{badge_path}` | absolute path to the **agent+state badge** PNG — one image showing *both* which agent and what state |
+
+  The three `*_path` icons are shipped in `icons/` (see that dir for the full
+  set). Most OS notifiers show a single image, so `{badge_path}` is usually what
+  you want — it tells you *who* and *what state* in one glance:
 
   ```tmux
   # flash a message on every attached client (helper ships with the plugin)
-  set -g @agent-monitor-on-wait '$HOME/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-notify.sh "{agent} needs input"'
-  set -g @agent-monitor-on-done '$HOME/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-notify.sh "{agent} is done"'
+  set -g @agent-monitor-on-wait '$HOME/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-notify.sh "{icon} {agent} needs input on {branch}"'
+  set -g @agent-monitor-on-done '$HOME/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-notify.sh "{icon} {agent} is done on {branch}"'
 
-  # macOS Notification Center
-  set -g @agent-monitor-on-wait 'osascript -e "display notification \"{agent} needs input\" with title \"tmux-agent-monitor\""'
-  set -g @agent-monitor-on-done 'osascript -e "display notification \"{agent} is done\" with title \"tmux-agent-monitor\""'
+  # macOS Notification Center (osascript can't set a custom icon — emoji in the text)
+  set -g @agent-monitor-on-wait 'osascript -e "display notification \"{agent} needs input\" with title \"🔴 {branch}\""'
+  set -g @agent-monitor-on-done 'osascript -e "display notification \"{agent} is done\" with title \"🟢 {branch}\""'
 
-  # Linux
-  set -g @agent-monitor-on-wait 'notify-send tmux-agent-monitor "{agent} needs input"'
-  set -g @agent-monitor-on-done 'notify-send tmux-agent-monitor "{agent} is done"'
+  # macOS with the per-agent badge as the icon (brew install terminal-notifier)
+  set -g @agent-monitor-on-wait 'terminal-notifier -title "{branch}" -message "{agent} needs input" -appIcon "{badge_path}"'
+  set -g @agent-monitor-on-done 'terminal-notifier -title "{branch}" -message "{agent} is done" -appIcon "{badge_path}"'
+
+  # Linux — -i takes the badge (agent + state) as the notification icon
+  set -g @agent-monitor-on-wait 'notify-send -i "{badge_path}" tmux-agent-monitor "{agent} needs input on {branch}"'
+  set -g @agent-monitor-on-done 'notify-send -i "{badge_path}" tmux-agent-monitor "{agent} is done on {branch}"'
   ```
+
+  Prefer a plain agent logo (no state dot)? Use `{agent_icon_path}`. Prefer just
+  the traffic-light colour? Use `{icon_path}`. The agent marks are the projects'
+  own logos, used only to identify them — see `icons/CREDITS.md`.
 
 ## How it works
 
@@ -128,8 +150,12 @@ tmux-agent-state.sh <name> end      # session over        → untracked
 ```
 
 Wire those to your agent's hook system (or a wrapper alias) and it shows up in
-the picker. PRs for new adapters are welcome — see `adapters/` for examples
-(~20 lines each).
+the picker — and the opt-in `@agent-monitor-on-wait` / `@agent-monitor-on-done`
+notifications fire for it automatically (since `tmux-agent-state.sh` handles
+them), with `{agent} {pane} {branch} {icon} {icon_path}` substituted. Ship a
+`logo-<name>.png` (and `badge-<name>-<state>.png`) in `icons/` and
+`{agent_icon_path}` / `{badge_path}` light up too. PRs for new adapters are
+welcome — see `adapters/` for examples (~20 lines each).
 
 ## Why not …?
 
@@ -147,8 +173,8 @@ the picker. PRs for new adapters are welcome — see `adapters/` for examples
 |---|---|---|
 | `@agent-monitor-key` | `M-a` | picker key binding |
 | `@agent-monitor-status` | off | `on` prepends the roll-up to your `status-right` |
-| `@agent-monitor-on-wait` | *(empty)* | shell command run when an agent enters waiting (blocked) |
-| `@agent-monitor-on-done` | *(empty)* | shell command run when an agent enters done (finished, unwatched) |
+| `@agent-monitor-on-wait` | *(empty)* | shell command run when an agent enters waiting (blocked); supports `{agent} {pane} {branch} {icon} {icon_path} {agent_icon_path} {badge_path}` |
+| `@agent-monitor-on-done` | *(empty)* | shell command run when an agent enters done (finished, unwatched); same placeholders |
 
 ## Troubleshooting
 
@@ -175,6 +201,7 @@ scripts/
   tmux-agent-picker.sh      the Alt+a picker (needs fzf)
   tmux-agent-summary.sh     status-bar roll-up
   tmux-agent-notify.sh      optional on-wait / on-done notifier (messages all attached clients)
+icons/                      notification icons + generate.sh (state dots, per-agent logos, agent+state badges)
 adapters/{claude,opencode,pi}/
 ```
 

@@ -19,11 +19,30 @@ export default function tmuxStatus(pi: ExtensionAPI): void {
   let running = false;
 
   // Opt-in notification, fired on *entering* a state (edge-triggered, once).
-  // {agent}/{pane} are substituted before the command runs.
-  const fireHook = async (option: string): Promise<void> => {
+  // {agent}/{pane}/{branch}/{icon}/{icon_path}/{agent_icon_path}/{badge_path}
+  // are substituted before the command runs.
+  const fireHook = async (option: string, state: string): Promise<void> => {
     const cmd = await tmuxRead("show-option", "-gqv", option);
     if (!cmd) return;
-    tmux("run-shell", "-b", cmd.replaceAll("{agent}", "pi").replaceAll("{pane}", pane));
+    const branch = await tmuxRead(
+      "display-message", ...target, "-p", "#{b:pane_current_path}",
+    );
+    const iconsDir = await tmuxRead("show-option", "-gqv", "@agent_icons");
+    const icon = state === "wait" ? "\u{1F534}" : state === "done" ? "\u{1F7E2}" : "\u26AA";
+    const iconPath = iconsDir ? `${iconsDir}/agent-${state}.png` : "";
+    const agentIconPath = iconsDir ? `${iconsDir}/logo-pi.png` : "";
+    const badgePath = iconsDir ? `${iconsDir}/badge-pi-${state}.png` : "";
+    tmux(
+      "run-shell", "-b",
+      cmd
+        .replaceAll("{agent}", "pi")
+        .replaceAll("{pane}", pane)
+        .replaceAll("{branch}", branch)
+        .replaceAll("{icon}", icon)
+        .replaceAll("{icon_path}", iconPath)
+        .replaceAll("{agent_icon_path}", agentIconPath)
+        .replaceAll("{badge_path}", badgePath),
+    );
   };
 
   const set = (v: string): void => {
@@ -31,8 +50,8 @@ export default function tmuxStatus(pi: ExtensionAPI): void {
     prev = v;
     tmux("set-option", "-p", "@agent_state", v);
     tmux("set-option", "-p", "@agent_state_ts", `${Math.floor(Date.now() / 1000)}`);
-    if (v === "wait" && from !== "wait") void fireHook("@agent-monitor-on-wait");
-    if (v === "done" && from !== "done") void fireHook("@agent-monitor-on-done");
+    if (v === "wait" && from !== "wait") void fireHook("@agent-monitor-on-wait", v);
+    if (v === "done" && from !== "done") void fireHook("@agent-monitor-on-done", v);
   };
 
   tmux("set-option", "-p", "@agent", "pi");

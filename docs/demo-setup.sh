@@ -19,6 +19,7 @@ TMUX="$(tmux -L "$SOCK" display-message -p '#{socket_path}'),0,0" \
 
 # state helper must be reachable for hooks straight from this repo
 tmux -L "$SOCK" set-option -g @agent_scripts "$REPO/scripts"
+tmux -L "$SOCK" set-option -g @agent_icons "$REPO/icons"
 
 # one session per real agent, launched interactively (they stamp state on-cam)
 for pair in claude:claude opencode:opencode pi:pi; do

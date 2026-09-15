@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- 🔴 waiting: blocked on you -->
+  <circle cx="64" cy="64" r="48" fill="#DD2E44"/>
+  <circle cx="64" cy="64" r="48" fill="none" stroke="#000" stroke-opacity="0.15" stroke-width="2"/>
+  <ellipse cx="64" cy="46" rx="26" ry="16" fill="#fff" fill-opacity="0.22"/>
+</svg>

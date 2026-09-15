@@ -3,6 +3,8 @@
 # scripts dir. Resolves its own location so nothing is hardcoded to ~/.claude.
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tmux set-option -g @agent_scripts "$CURRENT_DIR/scripts"
+# Per-state notification icons ({icon_path} in on-wait/on-done hooks resolves here).
+tmux set-option -g @agent_icons "$CURRENT_DIR/icons"
 
 # Focusing a wait/done pane means I've seen it -> downgrade to idle.
 # Appended (-a) so existing pane-focus-in hooks survive; guarded so

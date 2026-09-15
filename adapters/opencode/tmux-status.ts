@@ -14,7 +14,8 @@ export const TmuxStatus: Plugin = async ({ $ }) => {
     await $`tmux set-option -p @agent_state ${v}`.quiet().nothrow();
     await $`tmux set-option -p @agent_state_ts ${Math.floor(Date.now() / 1000)}`.quiet().nothrow();
     // Opt-in notification, fired on *entering* wait/done (edge-triggered).
-    // {agent}/{pane} substituted before the command runs.
+    // {agent}/{pane}/{branch}/{icon}/{icon_path}/{agent_icon_path}/{badge_path}
+    // are substituted before the command runs.
     const hook =
       v === "wait" && prev !== "wait" ? "@agent-monitor-on-wait" :
       v === "done" && prev !== "done" ? "@agent-monitor-on-done" : "";
@@ -22,10 +23,27 @@ export const TmuxStatus: Plugin = async ({ $ }) => {
       const cmd = (
         await $`tmux show-option -gqv ${hook}`.quiet().nothrow().text()
       ).trim();
-      if (cmd)
-        await $`tmux run-shell -b ${cmd.replaceAll("{agent}", "opencode").replaceAll("{pane}", pane)}`
-          .quiet()
-          .nothrow();
+      if (cmd) {
+        const branch = (
+          await $`tmux display-message -p ${"#{b:pane_current_path}"}`.quiet().nothrow().text()
+        ).trim();
+        const iconsDir = (
+          await $`tmux show-option -gqv @agent_icons`.quiet().nothrow().text()
+        ).trim();
+        const icon = v === "wait" ? "\u{1F534}" : v === "done" ? "\u{1F7E2}" : "\u26AA";
+        const iconPath = iconsDir ? `${iconsDir}/agent-${v}.png` : "";
+        const agentIconPath = iconsDir ? `${iconsDir}/logo-opencode.png` : "";
+        const badgePath = iconsDir ? `${iconsDir}/badge-opencode-${v}.png` : "";
+        const filled = cmd
+          .replaceAll("{agent}", "opencode")
+          .replaceAll("{pane}", pane)
+          .replaceAll("{branch}", branch)
+          .replaceAll("{icon}", icon)
+          .replaceAll("{icon_path}", iconPath)
+          .replaceAll("{agent_icon_path}", agentIconPath)
+          .replaceAll("{badge_path}", badgePath);
+        await $`tmux run-shell -b ${filled}`.quiet().nothrow();
+      }
     }
   };
   await $`tmux set-option -p @agent opencode`.quiet().nothrow();

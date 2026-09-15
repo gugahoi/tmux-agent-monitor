@@ -27,14 +27,33 @@ tmux set-option -p -t "$pane" @agent "$agent"
 tmux set-option -p -t "$pane" @agent_state "$st"
 tmux set-option -p -t "$pane" @agent_state_ts "$(date +%s)"
 # Opt-in notification, fired on *entering* a state (edge-triggered, once).
-# Set e.g.: set -g @agent-monitor-on-wait 'tmux-agent-notify.sh "{agent} needs input"'
-#           set -g @agent-monitor-on-done 'tmux-agent-notify.sh "{agent} is done"'
-# Placeholders {agent} and {pane} are substituted before the command runs.
+# Set e.g.: set -g @agent-monitor-on-wait 'tmux-agent-notify.sh "{icon} {agent} needs input on {branch}"'
+#           set -g @agent-monitor-on-done 'tmux-agent-notify.sh "{icon} {agent} is done on {branch}"'
+# Placeholders substituted before the command runs:
+#   {agent}          agent name (claude/opencode/pi/…)
+#   {pane}           tmux pane id (e.g. %3)
+#   {branch}         worktree dir basename of the pane (one worktree per branch)
+#   {icon}           state emoji (🔴 wait · 🟢 done)
+#   {icon_path}      absolute path to the state dot PNG (for notify-send -i etc.)
+#   {agent_icon_path} absolute path to the agent's brand-mark PNG
+#   {badge_path}     absolute path to the agent+state badge PNG (who + what-state)
 fire_hook() { # <option>
   local cmd; cmd=$(tmux show-option -gqv "$1" 2>/dev/null)
   [ -n "$cmd" ] || return 0
+  local branch icon icons_dir icon_path agent_icon_path badge_path
+  branch=$(tmux display-message -t "$pane" -p '#{b:pane_current_path}' 2>/dev/null)
+  case "$st" in wait) icon="🔴" ;; done) icon="🟢" ;; busy) icon="🟡" ;; *) icon="⚪" ;; esac
+  icons_dir=$(tmux show-option -gqv @agent_icons 2>/dev/null)
+  icon_path="${icons_dir:+$icons_dir/agent-$st.png}"
+  agent_icon_path="${icons_dir:+$icons_dir/logo-$agent.png}"
+  badge_path="${icons_dir:+$icons_dir/badge-$agent-$st.png}"
   cmd=${cmd//\{agent\}/$agent}
   cmd=${cmd//\{pane\}/$pane}
+  cmd=${cmd//\{branch\}/$branch}
+  cmd=${cmd//\{icon\}/$icon}
+  cmd=${cmd//\{icon_path\}/$icon_path}
+  cmd=${cmd//\{agent_icon_path\}/$agent_icon_path}
+  cmd=${cmd//\{badge_path\}/$badge_path}
   tmux run-shell -b "$cmd"
 }
 if [ "$st" = "wait" ] && [ "$prev" != "wait" ]; then fire_hook @agent-monitor-on-wait; fi
