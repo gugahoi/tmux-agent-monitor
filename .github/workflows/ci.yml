@@ -17,3 +17,5 @@ jobs:
           done
       - name: Shellcheck
         run: shellcheck scripts/*.sh agent-monitor.tmux install.sh
+      - name: Picker regression tests
+        run: python3 -m unittest discover -s tests -v

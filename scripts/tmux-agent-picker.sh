@@ -32,17 +32,43 @@ rows() {
       esac
       # hidden rank + epoch fields order the list: state rank, then oldest
       # (longest in that state) first; cut drops them before fzf
-      printf '%s\t%s\t%s\t%3s\t%-8s\t%s\t%s\t%s\n' "$r" "${ts:-$now}" "$b" "$a" "$agent" "$dir" "$sess" "$target"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$r" "${ts:-$now}" "$b" "$a" "$agent" "$dir" "$sess" "$target"
     done
 }
 
 list=$(rows | sort -t"$(printf '\t')" -k1,1n -k2,2n | cut -f3-)
 [ -n "$list" ] || note "no agents tracked yet — start claude, opencode or pi in a tmux pane"
 
+# Measure once, then use the same format for the header and every row.
+# Status badges already occupy 10 terminal columns (including the wide emoji).
+# Keep tabs as field delimiters for preview/selection, but render each as one
+# space in fzf so tab stops cannot change the explicit column padding.
+table() {
+  awk -F '\t' '
+    BEGIN {
+      age_width = 3; agent_width = 8; dir_width = 8
+      fmt = "%s \t%*s \t%-*s \t%-*s \t%s\t%s\n"
+    }
+    {
+      lines[NR] = $0
+      if (length($2) > age_width) age_width = length($2)
+      if (length($3) > agent_width) agent_width = length($3)
+      if (length($4) > dir_width) dir_width = length($4)
+    }
+    END {
+      printf fmt, "status    ", age_width, "age", agent_width, "agent", dir_width, "worktree", "session", ""
+      for (row = 1; row <= NR; row++) {
+        split(lines[row], fields, "\t")
+        printf fmt, fields[1], age_width, fields[2], agent_width, fields[3], dir_width, fields[4], fields[5], fields[6]
+      }
+    }
+  '
+}
+
 # shellcheck disable=SC2016  # single quotes on purpose: fzf runs the preview per row
-sel=$(printf '%s\n' "$list" \
-  | fzf --ansi --with-nth=1,2,3,4,5 --delimiter='\t' \
-        --prompt='🤖 ' --header='status · age · agent · worktree · session' \
+sel=$(printf '%s\n' "$list" | table \
+  | fzf --ansi --with-nth=1,2,3,4,5 --delimiter='\t' --tabstop=1 \
+        --prompt='🤖 ' --header-lines=1 \
         --preview 'tmux capture-pane -pt "$(printf "%s" {} | cut -f6)" -S -40' \
         --preview-window 'down:60%:wrap')
 [ -z "$sel" ] && exit 0
