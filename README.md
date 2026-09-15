@@ -57,7 +57,7 @@ skipped. **Restart running agents once** so they pick up the adapter.
 |----------|-------------------------------------|-------------------------------------|
 | claude   | hooks → `settings.json`             | idle · busy · wait · done           |
 | opencode | plugin → `~/.config/opencode/plugin/` | idle · busy · wait · done         |
-| pi       | extension → `~/.config/pi/extensions/` | idle · busy · done (no mid-turn wait) |
+| pi       | extension → `~/.config/pi/extensions/` | idle · busy · wait · done         |
 
 ## Use
 
@@ -78,18 +78,23 @@ skipped. **Restart running agents once** so they pick up the adapter.
   wherever you want in your own `status-right`.
 
 - **Notifications (opt-in)** — run any command when an agent *enters* the
-  waiting state (edge-triggered, fires once per wait). `{agent}` and `{pane}`
-  are substituted:
+  waiting state (blocked on you) or the done state (finished while you weren't
+  watching). Both are edge-triggered (fire once per transition); `done` never
+  fires for a pane you're already focused on. `{agent}` and `{pane}` are
+  substituted:
 
   ```tmux
   # flash a message on every attached client (helper ships with the plugin)
   set -g @agent-monitor-on-wait '$HOME/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-notify.sh "{agent} needs input"'
+  set -g @agent-monitor-on-done '$HOME/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-notify.sh "{agent} is done"'
 
   # macOS Notification Center
   set -g @agent-monitor-on-wait 'osascript -e "display notification \"{agent} needs input\" with title \"tmux-agent-monitor\""'
+  set -g @agent-monitor-on-done 'osascript -e "display notification \"{agent} is done\" with title \"tmux-agent-monitor\""'
 
   # Linux
   set -g @agent-monitor-on-wait 'notify-send tmux-agent-monitor "{agent} needs input"'
+  set -g @agent-monitor-on-done 'notify-send tmux-agent-monitor "{agent} is done"'
   ```
 
 ## How it works
@@ -142,7 +147,8 @@ the picker. PRs for new adapters are welcome — see `adapters/` for examples
 |---|---|---|
 | `@agent-monitor-key` | `M-a` | picker key binding |
 | `@agent-monitor-status` | off | `on` prepends the roll-up to your `status-right` |
-| `@agent-monitor-on-wait` | *(empty)* | shell command run when an agent enters waiting |
+| `@agent-monitor-on-wait` | *(empty)* | shell command run when an agent enters waiting (blocked) |
+| `@agent-monitor-on-done` | *(empty)* | shell command run when an agent enters done (finished, unwatched) |
 
 ## Troubleshooting
 
@@ -168,7 +174,7 @@ scripts/
   tmux-agent-state.sh       state stamp — used by claude, generic CLI for any agent
   tmux-agent-picker.sh      the Alt+a picker (needs fzf)
   tmux-agent-summary.sh     status-bar roll-up
-  tmux-agent-notify.sh      optional on-wait notifier (messages all attached clients)
+  tmux-agent-notify.sh      optional on-wait / on-done notifier (messages all attached clients)
 adapters/{claude,opencode,pi}/
 ```
 

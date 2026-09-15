@@ -26,14 +26,16 @@ prev=$(tmux show-option -qpv -t "$pane" @agent_state 2>/dev/null)
 tmux set-option -p -t "$pane" @agent "$agent"
 tmux set-option -p -t "$pane" @agent_state "$st"
 tmux set-option -p -t "$pane" @agent_state_ts "$(date +%s)"
-# Opt-in "needs you" notification, fired on *entering* wait (edge-triggered).
+# Opt-in notification, fired on *entering* a state (edge-triggered, once).
 # Set e.g.: set -g @agent-monitor-on-wait 'tmux-agent-notify.sh "{agent} needs input"'
+#           set -g @agent-monitor-on-done 'tmux-agent-notify.sh "{agent} is done"'
 # Placeholders {agent} and {pane} are substituted before the command runs.
-if [ "$st" = "wait" ] && [ "$prev" != "wait" ]; then
-  cmd=$(tmux show-option -gqv @agent-monitor-on-wait 2>/dev/null)
-  if [ -n "$cmd" ]; then
-    cmd=${cmd//\{agent\}/$agent}
-    cmd=${cmd//\{pane\}/$pane}
-    tmux run-shell -b "$cmd"
-  fi
-fi
+fire_hook() { # <option>
+  local cmd; cmd=$(tmux show-option -gqv "$1" 2>/dev/null)
+  [ -n "$cmd" ] || return 0
+  cmd=${cmd//\{agent\}/$agent}
+  cmd=${cmd//\{pane\}/$pane}
+  tmux run-shell -b "$cmd"
+}
+if [ "$st" = "wait" ] && [ "$prev" != "wait" ]; then fire_hook @agent-monitor-on-wait; fi
+if [ "$st" = "done" ] && [ "$prev" != "done" ]; then fire_hook @agent-monitor-on-done; fi

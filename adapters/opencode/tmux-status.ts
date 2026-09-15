@@ -1,5 +1,9 @@
 import type { Plugin } from "@opencode-ai/plugin";
 
+// active = this pane is the focused one AND a client is actually attached
+// (window_active alone is true even for sessions nobody is looking at).
+const ACTIVE = "#{&&:#{&&:#{pane_active},#{window_active}},#{session_attached}}";
+
 export const TmuxStatus: Plugin = async ({ $ }) => {
   if (!process.env.TMUX) return {};
   const pane = process.env.TMUX_PANE ?? "";
@@ -9,10 +13,14 @@ export const TmuxStatus: Plugin = async ({ $ }) => {
     ).trim();
     await $`tmux set-option -p @agent_state ${v}`.quiet().nothrow();
     await $`tmux set-option -p @agent_state_ts ${Math.floor(Date.now() / 1000)}`.quiet().nothrow();
-    // Opt-in on-wait notification (edge-triggered); {agent}/{pane} substituted.
-    if (v === "wait" && prev !== "wait") {
+    // Opt-in notification, fired on *entering* wait/done (edge-triggered).
+    // {agent}/{pane} substituted before the command runs.
+    const hook =
+      v === "wait" && prev !== "wait" ? "@agent-monitor-on-wait" :
+      v === "done" && prev !== "done" ? "@agent-monitor-on-done" : "";
+    if (hook) {
       const cmd = (
-        await $`tmux show-option -gqv @agent-monitor-on-wait`.quiet().nothrow().text()
+        await $`tmux show-option -gqv ${hook}`.quiet().nothrow().text()
       ).trim();
       if (cmd)
         await $`tmux run-shell -b ${cmd.replaceAll("{agent}", "opencode").replaceAll("{pane}", pane)}`
@@ -23,9 +31,20 @@ export const TmuxStatus: Plugin = async ({ $ }) => {
   await $`tmux set-option -p @agent opencode`.quiet().nothrow();
   return {
     event: async ({ event }) => {
-      switch (event.type) {
+      // Widen to string: opencode's permission event is named permission.updated
+      // on the v1 event bus (this plugin) and permission.asked on v2 — handle both.
+      const type: string = event.type;
+      switch (type) {
         case "message.updated":                             await stamp("busy"); break;
-        case "session.idle":                                await stamp("done"); break;
+        case "session.idle": {
+          // If you're already watching this pane there's nothing to review:
+          // idle (no notification), otherwise done.
+          const active = (
+            await $`tmux display-message -p ${ACTIVE}`.quiet().nothrow().text()
+          ).trim();
+          await stamp(active === "1" ? "idle" : "done");
+          break;
+        }
         case "permission.asked": case "permission.updated": await stamp("wait"); break;
         case "session.deleted":
           await $`tmux set-option -up @agent`.quiet().nothrow();
