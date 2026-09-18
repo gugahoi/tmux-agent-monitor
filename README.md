@@ -107,8 +107,8 @@ skipped. **Restart running agents once** so they pick up the adapter.
   set -g @agent-monitor-on-done 'osascript -e "display notification \"{agent} is done\" with title \"🟢 {branch}\""'
 
   # macOS with the per-agent badge as the icon (brew install terminal-notifier)
-  set -g @agent-monitor-on-wait 'terminal-notifier -title "{branch}" -message "{agent} needs input" -appIcon "{badge_path}"'
-  set -g @agent-monitor-on-done 'terminal-notifier -title "{branch}" -message "{agent} is done" -appIcon "{badge_path}"'
+  set -g @agent-monitor-on-wait 'terminal-notifier -title "{branch}" -message "{agent} needs input" -contentImage "{badge_path}"'
+  set -g @agent-monitor-on-done 'terminal-notifier -title "{branch}" -message "{agent} is done" -contentImage "{badge_path}"'
 
   # Linux — -i takes the badge (agent + state) as the notification icon
   set -g @agent-monitor-on-wait 'notify-send -i "{badge_path}" tmux-agent-monitor "{agent} needs input on {branch}"'
@@ -190,6 +190,13 @@ welcome — see `adapters/` for examples (~20 lines each).
   `adapters/claude/hooks.json` into `~/.claude/settings.json` by hand.
 - **Status bar shows nothing** — the roll-up is opt-in, and empty by design
   when nothing is pending.
+- **terminal-notifier shows an old/wrong icon** — macOS caches notification
+  icons per *bundle id*, and every terminal-notifier notification shares one
+  (`fr.julienxx.oss.terminal-notifier`). The deprecated `-appIcon` flag gets
+  pinned to whatever was cached first and ignores newer `{badge_path}` files.
+  Use `-contentImage` instead (see the notification recipes above); it's the
+  supported API and re-reads the file every time. To clear an already-stuck
+  icon: `killall usernoted NotificationCenter` (or log out and back in).
 
 ## Layout
 
