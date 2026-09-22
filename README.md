@@ -119,6 +119,40 @@ skipped. **Restart running agents once** so they pick up the adapter.
   the traffic-light colour? Use `{icon_path}`. The agent marks are the projects'
   own logos, used only to identify them — see `icons/CREDITS.md`.
 
+### Clickable macOS notifications (Ghostty)
+
+Using **Ghostty + terminal-notifier**? Replace the plain terminal-notifier
+recipes above with these hooks (`brew install terminal-notifier` if needed):
+
+```tmux
+set -g @agent-monitor-on-wait '"$HOME/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-notify-macos.sh" "{pane}" "{branch}" "{agent} needs input" "{badge_path}"'
+set -g @agent-monitor-on-done '"$HOME/.tmux/plugins/tmux-agent-monitor/scripts/tmux-agent-notify-macos.sh" "{pane}" "{branch}" "{agent} is done" "{badge_path}"'
+```
+
+Adjust the plugin path if you cloned it elsewhere, then reload your tmux config
+(`tmux source-file ~/.tmux.conf`). Only newly delivered notifications get the
+click action; existing notifications are unchanged.
+
+Clicking brings Ghostty forward and switches the **most recently active writable
+tmux client** on that server to the agent's session, window, and pane. Control-mode
+and read-only clients are ignored. The helper captures the server socket and pane
+ID when sending, so named tmux servers, session renames, and pane moves work even
+when Notification Center doesn't inherit your shell's environment.
+
+- A closed pane or stopped/restarted server makes the tmux action a quiet no-op.
+- At least one eligible client must still be attached. The callback doesn't open
+  a new terminal or attach to a detached server.
+- This is for **local tmux in Ghostty**, not tmux over SSH. With multiple Ghostty
+  tabs/windows or terminal apps, it still chooses the most recently active tmux
+  client; bringing Ghostty forward does **not** select a particular Ghostty tab
+  or window.
+- The helper takes `<pane> <title> <message> [image] [app-bundle-id]`. Omit the
+  image (or pass `""`) for text only. The default app ID is
+  `com.mitchellh.ghostty`; pass another bundle ID as the fifth argument to
+  activate a different terminal.
+
+The existing in-tmux notifier and plain OS notification recipes remain unchanged.
+
 ## How it works
 
 1. **Agents report their own state.** Claude Code hooks, an opencode plugin and
@@ -208,6 +242,8 @@ scripts/
   tmux-agent-picker.sh      the Alt+a picker (needs fzf)
   tmux-agent-summary.sh     status-bar roll-up
   tmux-agent-notify.sh      optional on-wait / on-done notifier (messages all attached clients)
+  tmux-agent-notify-macos.sh clickable terminal-notifier notifications (Ghostty by default)
+  tmux-agent-focus.sh       headless click callback: switches an attached client to a pane
 icons/                      notification icons + generate.sh (state dots, per-agent logos, agent+state badges)
 adapters/{claude,opencode,pi}/
 ```
