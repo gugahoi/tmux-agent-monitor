@@ -6,6 +6,13 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 link() { mkdir -p "$(dirname "$2")"; ln -sfn "$1" "$2"; echo "  linked $2"; }
+# Drop a link to one of our adapters (from any clone of this repo). Never
+# touches real files or links that point elsewhere.
+unlink_ours() { # <link> <adapter path suffix>
+  case "$(readlink "$1" 2>/dev/null)" in
+    *"$2") rm "$1"; echo "  removed $1" ;;
+  esac
+}
 
 # runtime dep for the Alt+a picker (not needed for this script, checked for DX)
 command -v fzf >/dev/null 2>&1 || echo "note: fzf not found — the Alt+a picker needs it (e.g. brew install fzf)"
@@ -44,7 +51,18 @@ fi
 
 echo "opencode:"
 if [ -d "$HOME/.config/opencode" ]; then
-  link "$REPO/adapters/opencode/tmux-status.ts" "$HOME/.config/opencode/plugin/tmux-status.ts"
+  OC="$HOME/.config/opencode"
+  major="$(opencode --version 2>/dev/null | sed -nE 's/^[^0-9]*([0-9]+)\..*/\1/p' | head -n1)" || major=""
+  [ -n "$major" ] || echo "  note: couldn't run 'opencode --version' — assuming opencode 2"
+  # Each major only loads its own adapter, so remove ours for the other one
+  # (opencode 2 also scans 1.x's plugin/ dir and would fail to load it).
+  if [ "${major:-2}" -ge 2 ]; then
+    unlink_ours "$OC/plugin/tmux-status.ts" "/adapters/opencode/tmux-status.ts"
+    link "$REPO/adapters/opencode/v2" "$OC/plugins/tmux-status"
+  else
+    unlink_ours "$OC/plugins/tmux-status" "/adapters/opencode/v2"
+    link "$REPO/adapters/opencode/tmux-status.ts" "$OC/plugin/tmux-status.ts"
+  fi
 else
   echo "  skipped — ~/.config/opencode not found (install opencode, then re-run)"
 fi
