@@ -1,3 +1,4 @@
+// opencode 1.x adapter. opencode 2.x loads v2/tui.ts instead (install.sh picks).
 import type { Plugin } from "@opencode-ai/plugin";
 
 // active = this pane is the focused one AND a client is actually attached

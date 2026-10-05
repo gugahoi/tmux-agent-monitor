@@ -56,8 +56,14 @@ skipped. **Restart running agents once** so they pick up the adapter.
 | agent    | mechanism                           | states                              |
 |----------|-------------------------------------|-------------------------------------|
 | claude   | hooks → `settings.json`             | idle · busy · wait · done           |
-| opencode | plugin → `~/.config/opencode/plugin/` | idle · busy · wait · done         |
+| opencode | plugin → `~/.config/opencode/plugins/` (1.x: `plugin/`) | idle · busy · wait · done |
 | pi       | extension → `~/.config/pi/extensions/` | idle · busy · wait · done         |
+
+opencode 2.x runs one shared background server for every TUI, so its adapter
+is a CLI plugin: it runs inside each TUI (so state lands on the right pane) and
+only tracks sessions that TUI has had on screen. `install.sh` checks
+`opencode --version` and links the right adapter — **re-run it after upgrading
+opencode** from 1.x to 2.x.
 
 ## Use
 
@@ -220,6 +226,9 @@ welcome — see `adapters/` for examples (~20 lines each).
   in iTerm2 set the Option key to “Esc+”. Or rebind via `@agent-monitor-key`.
 - **install.sh said “skipped”** — it only links adapters for agents whose
   config dir exists; install the agent and re-run.
+- **opencode 2.x shows “1 plugin failed”** (or panes stopped updating after
+  upgrading opencode) — the 1.x adapter is still linked. Re-run `install.sh`;
+  it swaps in the 2.x adapter.
 - **Claude hooks weren't merged** — `jq` is missing; merge
   `adapters/claude/hooks.json` into `~/.claude/settings.json` by hand.
 - **Status bar shows nothing** — the roll-up is opt-in, and empty by design
