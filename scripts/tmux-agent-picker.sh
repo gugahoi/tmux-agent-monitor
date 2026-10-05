@@ -7,6 +7,8 @@ note() { tmux display-message "tmux-agent-monitor: $1" 2>/dev/null || true; exit
 command -v fzf >/dev/null 2>&1 || note "fzf not found (e.g. brew install fzf)"
 
 now=$(date +%s)
+# In a popup, tmux resolves this against the client that opened it.
+current_pane=$(tmux display-message -p '#{pane_id}' 2>/dev/null)
 
 # seconds -> compact age ("45s", "4m", "2h", "3d"); empty input -> empty
 age() {
@@ -19,9 +21,10 @@ age() {
 }
 
 rows() {
-  tmux list-panes -a -F '#{@agent}|#{@agent_state}|#{@agent_state_ts}|#{session_name}|#{b:pane_current_path}|#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null \
+  tmux list-panes -a -F '#{@agent}|#{@agent_state}|#{@agent_state_ts}|#{session_name}|#{b:pane_current_path}|#{session_name}:#{window_index}.#{pane_index}|#{pane_id}' 2>/dev/null \
   | awk -F'|' '$1!=""' \
-  | while IFS='|' read -r agent st ts sess dir target; do
+  | while IFS='|' read -r agent st ts sess dir target pane_id; do
+      [ -n "$current_pane" ] && [ "$pane_id" = "$current_pane" ] && continue
       case "$st" in
         # badge padded by hand: printf %Ns counts emoji bytes, not columns
         wait) b="🔴 waiting"; r=0; a=$(age "$ts") ;;
@@ -37,7 +40,7 @@ rows() {
 }
 
 list=$(rows | sort -t"$(printf '\t')" -k1,1n -k2,2n | cut -f3-)
-[ -n "$list" ] || note "no agents tracked yet — start claude, opencode or pi in a tmux pane"
+[ -n "$list" ] || note "no other agents to show"
 
 # Measure once, then use the same format for the header and every row.
 # Status badges already occupy 10 terminal columns (including the wide emoji).

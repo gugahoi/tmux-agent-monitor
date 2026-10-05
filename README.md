@@ -61,8 +61,9 @@ skipped. **Restart running agents once** so they pick up the adapter.
 
 ## Use
 
-- **`Alt+a`** — picker across *all* sessions: waiting-first (longest wait
-  first), live pane preview, Enter jumps there. Rebind with
+- **`Alt+a`** — picker across *all* sessions except the pane you're currently
+  viewing: waiting-first (longest wait first), live pane preview, Enter jumps
+  there. Rebind with
   `set -g @agent-monitor-key 'M-g'` (before the plugin loads).
 - **Focus = acknowledged** — land on a 🔴/🟢 pane and it quietly flips to ⚪.
 - **Status-bar roll-up** — a live `🔴2 🟢1` count in your `status-right`,
@@ -212,8 +213,9 @@ welcome — see `adapters/` for examples (~20 lines each).
 
 ## Troubleshooting
 
-- **Nothing shows up in the picker** — adapters load when an agent starts:
-  restart the agent. Check a pane is tracked with
+- **Nothing shows up in the picker** — the pane you're viewing is hidden; if
+  other agents are missing, restart them (adapters load when an agent starts).
+  Check a pane is tracked with
   `tmux display-message -p '#{@agent} #{@agent_state}'` inside it.
 - **Picker complains about fzf** — install it (`brew install fzf`).
 - **`Alt+a` does nothing** — on macOS Terminal enable “Use Option as Meta key”;
