@@ -69,7 +69,8 @@ opencode** from 1.x to 2.x.
 
 - **`Alt+a`** — picker across *all* sessions except the pane you're currently
   viewing: waiting-first (longest wait first), live pane preview, Enter jumps
-  there. Rebind with
+  there. Each row shows the agent's session title (the pane's terminal title),
+  so two agents in the same worktree are easy to tell apart. Rebind with
   `set -g @agent-monitor-key 'M-g'` (before the plugin loads).
 - **Focus = acknowledged** — land on a 🔴/🟢 pane and it quietly flips to ⚪.
 - **Status-bar roll-up** — a live `🔴2 🟢1` count in your `status-right`,
