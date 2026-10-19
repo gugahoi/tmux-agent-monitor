@@ -53,13 +53,18 @@ list=$(rows | sort -t"$(printf '\t')" -k1,1n -k2,2n | cut -f3-)
 # Status badges already occupy 10 terminal columns (including the wide emoji).
 # Keep tabs as field delimiters for preview/selection, but render each as one
 # space in fzf so tab stops cannot change the explicit column padding.
+# Long agent/repo/branch/session names are clipped to max_width so the title
+# stays on screen; ASCII ".." because mawk counts bytes, not columns.
 table() {
   awk -F '\t' '
     BEGIN {
+      OFS = "\t"; max_width = 24
       age_width = 3; agent_width = 8; repo_width = 4; branch_width = 6; sess_width = 7
       fmt = "%s \t%*s \t%-*s \t%-*s \t%-*s \t%-*s \t%s\t%s\n"
     }
     {
+      for (i = 3; i <= 6; i++)
+        if (length($i) > max_width) $i = substr($i, 1, max_width - 2) ".."
       lines[NR] = $0
       if (length($2) > age_width) age_width = length($2)
       if (length($3) > agent_width) agent_width = length($3)

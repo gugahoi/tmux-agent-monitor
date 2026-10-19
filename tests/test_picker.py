@@ -156,6 +156,18 @@ awk -F '\\t' 'NR > 1 && $8 == ENVIRON["PICK_TARGET"] { print; exit }' "$TEST_DIR
         self.assertEqual(records[1][1].strip(), "23148d")
         self.assertEqual(len(records[0][1]), len(records[1][1]))
 
+    def test_long_names_are_clipped_but_target_is_not(self):
+        long = "6391-let-annual-subscribers-delete-their-account"
+        self.panes.append(f"pi|wait|1|{long}|/src/x|{long}:0.0|%6|keep me")
+        self.env["PICK_TARGET"] = f"{long}:0.0"
+        self.run_picker()
+        header, record = self.records()[:2]
+        self.assertEqual(record[5], long[:22] + ".. ")
+        self.assertEqual(len(header[5]), len(record[5]))
+        self.assertEqual(record[6], "keep me")
+        self.assertEqual((self.path / "commands").read_text().splitlines()[0],
+                         f"switch-client -t {long}")
+
     def test_current_pane_is_hidden_but_other_panes_with_same_agent_remain(self):
         self.env["CURRENT_PANE"] = "%5"  # pi, also tracked in idle-session
         self.run_picker()
