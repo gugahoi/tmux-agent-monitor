@@ -43,15 +43,15 @@ esac
         self.mock("fzf", """printf '%s\\n' "$@" > "$TEST_DIR/fzf-args"
 cat > "$TEST_DIR/fzf-input"
 [ "${CANCEL:-0}" = 1 ] && exit 1
-awk -F '\\t' 'NR > 1 && $6 == ENVIRON["PICK_TARGET"] { print; exit }' "$TEST_DIR/fzf-input"
+awk -F '\\t' 'NR > 1 && $7 == ENVIRON["PICK_TARGET"] { print; exit }' "$TEST_DIR/fzf-input"
 """)
         self.panes = [
-            "pi|idle||idle-session|short|idle-session:0.0|%1",
-            f"custom-long-agent|busy|{NOW}|busy-session|worktree with spaces|busy-session:1.0|%2",
-            f"claude|done|{NOW - 45}|done-session|5966-new-recurring-payment-notification|done-session:2.3|%3",
-            f"opencode|wait|{NOW - 4000}|older-wait|tiny|older-wait:3.0|%4",
-            f"pi|wait|{NOW - 120}|newer-wait|another-worktree|newer-wait:4.0|%5",
-            "|||untracked|ignored|untracked:0.0|%0",
+            "pi|idle||idle-session|short|idle-session:0.0|%1|",
+            f"custom-long-agent|busy|{NOW}|busy-session|worktree with spaces|busy-session:1.0|%2|OC | fix the | pipes",
+            f"claude|done|{NOW - 45}|done-session|5966-new-recurring-payment-notification|done-session:2.3|%3|✳ Session title in popup",
+            f"opencode|wait|{NOW - 4000}|older-wait|tiny|older-wait:3.0|%4|",
+            f"pi|wait|{NOW - 120}|newer-wait|another-worktree|newer-wait:4.0|%5|",
+            "|||untracked|ignored|untracked:0.0|%0|",
         ]
 
     def mock(self, name, body):
@@ -73,23 +73,26 @@ awk -F '\\t' 'NR > 1 && $6 == ENVIRON["PICK_TARGET"] { print; exit }' "$TEST_DIR
         args = (self.path / "fzf-args").read_text().splitlines()
         self.assertIn("--header-lines=1", args)
         self.assertIn("--tabstop=1", args)
-        self.assertIn("--with-nth=1,2,3,4,5", args)
+        self.assertIn("--with-nth=1,2,3,4,5,6", args)
         records = self.records()
-        self.assertEqual([field.strip() for field in records[0][:5]],
-                         ["status", "age", "agent", "worktree", "session"])
+        self.assertEqual([field.strip() for field in records[0][:6]],
+                         ["status", "age", "agent", "worktree", "session", "title"])
         # With tabstop=1 each delimiter occupies one column. Equal field
         # widths mean all following columns start at the same screen position.
-        widths = [columns(field) for field in records[0][:4]]
+        widths = [columns(field) for field in records[0][:5]]
         for record in records[1:]:
-            self.assertEqual(len(record), 6)
-            self.assertEqual([columns(field) for field in record[:4]], widths)
+            self.assertEqual(len(record), 7)
+            self.assertEqual([columns(field) for field in record[:5]], widths)
         self.assertEqual(records[-1][1].strip(), "")  # idle has no age
         self.assertEqual(records[-2][1].strip(), "")  # busy has no age
         self.assertEqual(records[-2][3].strip(), "worktree with spaces")
+        self.assertEqual(records[-2][5], "OC | fix the | pipes")  # '|' kept
+        self.assertEqual(records[3][5], "✳ Session title in popup")
+        self.assertEqual(records[1][5], "")  # agent never set a title
 
     def test_sort_order_and_target_are_preserved(self):
         self.run_picker()
-        self.assertEqual([record[5] for record in self.records()[1:]], [
+        self.assertEqual([record[6] for record in self.records()[1:]], [
             "older-wait:3.0", "newer-wait:4.0", "done-session:2.3",
             "busy-session:1.0", "idle-session:0.0",
         ])
@@ -114,14 +117,14 @@ awk -F '\\t' 'NR > 1 && $6 == ENVIRON["PICK_TARGET"] { print; exit }' "$TEST_DIR
         env = dict(os.environ, FZF_DEFAULT_OPTS="", FZF_DEFAULT_OPTS_FILE="/dev/null")
         result = subprocess.run([FZF, *args, "--filter=claude"], input=data,
                                 text=True, capture_output=True, env=env, check=True)
-        self.assertEqual(result.stdout.rstrip("\n").split("\t")[5], "done-session:2.3")
+        self.assertEqual(result.stdout.rstrip("\n").split("\t")[6], "done-session:2.3")
         result = subprocess.run([FZF, *args, "--filter='status"], input=data,
                                 text=True, capture_output=True, env=env)
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout, "")
 
     def test_age_column_expands_for_long_ages(self):
-        self.panes.append("pi|wait|1|ancient|old|ancient:0.0|%6")
+        self.panes.append("pi|wait|1|ancient|old|ancient:0.0|%6|")
         self.run_picker()
         records = self.records()
         self.assertEqual(records[1][1].strip(), "23148d")
@@ -130,7 +133,7 @@ awk -F '\\t' 'NR > 1 && $6 == ENVIRON["PICK_TARGET"] { print; exit }' "$TEST_DIR
     def test_current_pane_is_hidden_but_other_panes_with_same_agent_remain(self):
         self.env["CURRENT_PANE"] = "%5"  # pi, also tracked in idle-session
         self.run_picker()
-        self.assertEqual([record[5] for record in self.records()[1:]], [
+        self.assertEqual([record[6] for record in self.records()[1:]], [
             "older-wait:3.0", "done-session:2.3", "busy-session:1.0",
             "idle-session:0.0",
         ])
@@ -146,7 +149,7 @@ awk -F '\\t' 'NR > 1 && $6 == ENVIRON["PICK_TARGET"] { print; exit }' "$TEST_DIR
         self.env["PICK_TARGET"] = "older-wait:3.0"
         self.panes.append(self.panes[2].replace("done-session:2.3", "linked-session:7.0"))
         self.run_picker()
-        targets = [record[5] for record in self.records()[1:]]
+        targets = [record[6] for record in self.records()[1:]]
         self.assertNotIn("done-session:2.3", targets)
         self.assertNotIn("linked-session:7.0", targets)
         self.assertEqual((self.path / "commands").read_text().splitlines(), [
@@ -170,7 +173,7 @@ awk -F '\\t' 'NR > 1 && $6 == ENVIRON["PICK_TARGET"] { print; exit }' "$TEST_DIR
         self.assertFalse((self.path / "commands").exists())
 
     def test_no_agents_does_not_open_fzf(self):
-        self.panes = ["|||untracked|ignored|untracked:0.0|%0"]
+        self.panes = ["|||untracked|ignored|untracked:0.0|%0|"]
         self.run_picker()
         self.assertFalse((self.path / "fzf-input").exists())
         self.assertIn("no other agents to show", (self.path / "commands").read_text())
